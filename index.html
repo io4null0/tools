@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>web code editor</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/theme/material-darker.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/theme/eclipse.min.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #1e1e1e;
+      color: #c5c5c5;
+    }
+    header {
+      background: #252526;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    header button {
+      margin-left: 10px;
+      padding: 5px 10px;
+      border: none;
+      background: #0078d7;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    header button:hover {
+      background: #005a9e;
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    .tab-bar {
+      width: 200px;
+      background: #2d2d2d;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+    }
+    .tab-bar span {
+      margin-bottom: 10px;
+      padding: 5px;
+      cursor: pointer;
+      border-radius: 4px;
+      background: #333333;
+      color: white;
+    }
+    .tab-bar span.active {
+      background: #0078d7;
+    }
+    .editor-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .CodeMirror {
+      height: 100%;
+    }
+    iframe {
+      flex: 1;
+      border: none;
+      background: white;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>Wcode V.1.1</div>
+    <div>
+      <button id="importButton">インポート</button>
+      <button id="exportButton">エクスポート</button>
+      <button id="downloadButton">ダウンロード</button>
+      <button id="themeButton">テーマ切り替え</button>
+      <button id="resetButton">リセット</button>
+    </div>
+  </header>
+  <div class="main">
+    <div class="tab-bar">
+      <span data-editor="htmlEditor" class="active">index.html</span>
+      <span data-editor="cssEditor">style.css</span>
+      <span data-editor="jsEditor">script.js</span>
+    </div>
+    <div class="editor-area">
+      <textarea id="htmlEditor"></textarea>
+      <textarea id="cssEditor" style="display:none"></textarea>
+      <textarea id="jsEditor" style="display:none"></textarea>
+      <iframe id="preview"></iframe>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/theme/material-darker.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.10/theme/eclipse.min.js"></script>
+  <script>
+    const editors = {
+      htmlEditor: CodeMirror.fromTextArea(document.getElementById("htmlEditor"), {
+        mode: "htmlmixed",
+        lineNumbers: true,
+        theme: "material-darker",
+        tabSize: 2,
+      }),
+      cssEditor: CodeMirror.fromTextArea(document.getElementById("cssEditor"), {
+        mode: "css",
+        lineNumbers: true,
+        theme: "material-darker",
+        tabSize: 2,
+      }),
+      jsEditor: CodeMirror.fromTextArea(document.getElementById("jsEditor"), {
+        mode: "javascript",
+        lineNumbers: true,
+        theme: "material-darker",
+        tabSize: 2,
+      }),
+    };
+
+    const preview = document.getElementById("preview");
+
+    function updatePreview() {
+      const html = editors.htmlEditor.getValue();
+      const css = `<style>${editors.cssEditor.getValue()}</style>`;
+      const js = `<script>${editors.jsEditor.getValue()}<\/script>`;
+      const content = `${html}${css}${js}`;
+      const doc = preview.contentDocument || preview.contentWindow.document;
+      doc.open();
+      doc.write(content);
+      doc.close();
+    }
+
+    Object.values(editors).forEach((editor) => {
+      editor.on("change", updatePreview);
+    });
+
+    document.querySelectorAll(".tab-bar span").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab-bar span").forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        Object.keys(editors).forEach((key) => {
+          document.getElementById(key).style.display = key === tab.dataset.editor ? "block" : "none";
+        });
+      });
+    });
+
+    // テーマ切り替え
+    document.getElementById("themeButton").addEventListener("click", () => {
+      const currentTheme = editors.htmlEditor.getOption("theme") === "material-darker" ? "eclipse" : "material-darker";
+      Object.values(editors).forEach((editor) => editor.setOption("theme", currentTheme));
+    });
+
+    // リセット
+    document.getElementById("resetButton").addEventListener("click", () => {
+      Object.values(editors).forEach((editor) => editor.setValue(""));
+      updatePreview();
+    });
+
+    // インポート
+    document.getElementById("importButton").addEventListener("click", () => {
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".html,.css,.js";
+      fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = () => {
+          const extension = file.name.split(".").pop();
+          if (extension === "html") editors.htmlEditor.setValue(reader.result);
+          else if (extension === "css") editors.cssEditor.setValue(reader.result);
+          else if (extension === "js") editors.jsEditor.setValue(reader.result);
+        };
+        reader.readAsText(file);
+      };
+      fileInput.click();
+    });
+
+    // エクスポート
+    document.getElementById("exportButton").addEventListener("click", () => {
+      ["htmlEditor", "cssEditor", "jsEditor"].forEach((id) => {
+        const blob = new Blob([editors[id].getValue()], { type: "text/plain" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = id === "htmlEditor" ? "index.html" : id === "cssEditor" ? "style.css" : "script.js";
+        a.click();
+      });
+    });
+  </script>
+</body>
+</html>
